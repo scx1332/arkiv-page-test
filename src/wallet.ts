@@ -39,13 +39,13 @@ class EasyRpcClients {
 
 let currentClients: EasyRpcClients | null = null;
 
+const keyName = "arkiv-page-test:privateKey";
+
 export function cleanLocalStorageKey() {
-  const keyName = "arkiv:local:privateKey";
   localStorage.removeItem(keyName);
 }
 
 function getOrCreateLocalStorageKey() {
-  const keyName = "arkiv:local:privateKey";
   const stored = localStorage.getItem(keyName);
   if (stored && /^0x[0-9a-fA-F]{64}$/.test(stored)) {
     return stored as `0x${string}`;

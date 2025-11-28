@@ -1,34 +1,36 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8"/>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Arkiv Playground</title>
-  </head>
-  <body>
-    <div id="app" style="display: none">
-      <header>
+</head>
+<body>
+<div id="app" style="display: none">
+    <header>
         <h1>Arkiv Playground</h1>
         <div style="display: flex; flex-direction: column">
-          <div id="account" style="font-family: monospace"></div>
-          <div style="display: flex; align-items: center; gap: 10px">
-            <button id="reset-account-btn">Reset Account</button>
-            <div id="balance"></div>
-          </div>
+            <div id="account" style="font-family: monospace"></div>
+            <div style="display: flex; align-items: center; gap: 10px">
+                <button id="reset-account-btn">Reset Account</button>
+                <div id="balance"></div>
+            </div>
         </div>
-      </header>
+    </header>
 
-      <div class="container">
+    <div class="container">
         <div class="left-panel">
-          <h2>Left panel</h2>
+            <h2>Left panel</h2>
+            <div id="info-left-panel"></div>
+            <div id="entity-list-div"></div>
         </div>
 
         <div class="right-panel">
-          <h2>Right panel</h2>
+            <h2>Right panel</h2>
         </div>
-      </div>
     </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
 </html>
