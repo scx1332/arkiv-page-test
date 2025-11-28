@@ -1,0 +1,32 @@
+name: NPM - Check source code
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * *"
+
+jobs:
+  checks:
+    name: "Check CLI code - NPM"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run lint
+        run: |
+          npm run lint
+
+      - name: Run format check
+        run: |
+          npm run format:check
