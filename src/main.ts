@@ -10,7 +10,9 @@ const accountDiv = document.getElementById("account") as HTMLDivElement;
 const accountBalance = document.getElementById("balance") as HTMLDivElement;
 const entityListDiv = document.getElementById("entity-list-div") as HTMLDivElement;
 const entityListDivRight = document.getElementById("entity-list-div-right") as HTMLDivElement;
+const entityListDivMiddle = document.getElementById("entity-list-div-middle") as HTMLDivElement;
 const infoLeftPanel = document.getElementById("info-left-panel") as HTMLDivElement;
+const infoMiddlePanel = document.getElementById("info-middle-panel") as HTMLDivElement;
 const infoRightPanel = document.getElementById("info-right-panel") as HTMLDivElement;
 
 const resetAccountBtn = document.getElementById(
@@ -34,8 +36,7 @@ const uniqueStr = Math.random().toString(36).substring(2, 8);
 
 const globalEntities: Hex[] = [];
 
-function drawEntities(entities: Entity[], left: boolean = true) {
-  const div = left ? entityListDiv : entityListDivRight;
+function drawEntities(entities: Entity[], div: HTMLDivElement) {
   if (entities.length === 0) {
     div.textContent = "No entities found.";
   } else {
@@ -44,7 +45,7 @@ function drawEntities(entities: Entity[], left: boolean = true) {
         const hex = (e.key).toString().slice(0, 6) + "...";
         const attrs =
           Array.isArray(e.attributes) && e.attributes.length
-            ? e.attributes.map((a: any) => `${a.key}: ${String(a.value)}`).join(", ")
+            ? e.attributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")
             : "";
         let payloadStr = "";
         if (e.payload) {
@@ -82,10 +83,15 @@ async function oldEntities(blockAfterPush: bigint) {
   await new Promise((resolve) => setTimeout(resolve, 5000));
   console.log("Get number of entities:", res.entities.length);
 
+  if (res.entities.length === 10) {
+    infoMiddlePanel.innerHTML = `<p>Data from ${blockAfterPush} (${currentBlock - blockAfterPush} before) get ${res.entities.length} entities</p>`;
 
-  infoRightPanel.innerHTML = `<p>Data from ${blockAfterPush} (${currentBlock - blockAfterPush} before) get ${res.entities.length} entities</p>`;
+    drawEntities(res.entities, entityListDivMiddle);
+  } else {
+    infoRightPanel.innerHTML = `<p>Data from ${blockAfterPush} (${currentBlock - blockAfterPush} before) get ${res.entities.length} entities</p>`;
 
-  drawEntities(res.entities, false);
+    drawEntities(res.entities, entityListDivRight);
+  }
 }
 
 async function newEntities() {
@@ -102,8 +108,9 @@ async function newEntities() {
 
 
   infoLeftPanel.innerHTML = `<p>Current list of ${res.entities.length} entities (for block ${currentBlock})</p>`;
+  drawEntities(res.entities, entityListDiv);
 
-  drawEntities(res.entities, true);
+
 }
 
 
@@ -143,7 +150,7 @@ async function pushEntities() {
   const blockAfterPush = await clients.publicClient.getBlockNumber();
   console.log("Block after push:", blockAfterPush);
 
-  let queryBuilder = clients.publicClient.buildQuery();
+  const queryBuilder = clients.publicClient.buildQuery();
   queryBuilder.where(eq("unique", uniqueStr)).withMetadata(true).withPayload(true).withAttributes(true);
 
   queryBuilder.limit(2);
@@ -192,7 +199,7 @@ async function pushEntities() {
 
   const entities = allEntities ?? [];
 
-  drawEntities(entities, true);
+  drawEntities(entities, entityListDivMiddle);
 
 
   infoLeftPanel.innerHTML = `<p>Finished</p>`;
@@ -202,13 +209,10 @@ async function pushEntities() {
     await newEntities();
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }
-
-
-
 }
 
 async function init() {
-  const clients = await connectWallet();
+  const clients = connectWallet();
 
   accountBalance.textContent = "";
   accountDiv.innerHTML = `<a class="entity-link" href="https://explorer.rosario.hoodi.arkiv.network/address/${clients.getAddress()}" target="_blank" rel="noopener noreferrer">${clients.getAddress()}</a>`;
