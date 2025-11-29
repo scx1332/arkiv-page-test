@@ -9,7 +9,9 @@ const app = document.getElementById("app") as HTMLButtonElement;
 const accountDiv = document.getElementById("account") as HTMLDivElement;
 const accountBalance = document.getElementById("balance") as HTMLDivElement;
 const entityListDiv = document.getElementById("entity-list-div") as HTMLDivElement;
+const entityListDivRight = document.getElementById("entity-list-div-right") as HTMLDivElement;
 const infoLeftPanel = document.getElementById("info-left-panel") as HTMLDivElement;
+const infoRightPanel = document.getElementById("info-right-panel") as HTMLDivElement;
 
 const resetAccountBtn = document.getElementById(
   "reset-account-btn",
@@ -31,6 +33,79 @@ resetAccountBtn.addEventListener("click", async () => {
 const uniqueStr = Math.random().toString(36).substring(2, 8);
 
 const globalEntities: Hex[] = [];
+
+function drawEntities(entities: Entity[], left: boolean = true) {
+  const div = left ? entityListDiv : entityListDivRight;
+  if (entities.length === 0) {
+    div.textContent = "No entities found.";
+  } else {
+    const rows = entities
+      .map((e: Entity) => {
+        const hex = (e.key).toString().slice(0, 6) + "...";
+        const attrs =
+          Array.isArray(e.attributes) && e.attributes.length
+            ? e.attributes.map((a: any) => `${a.key}: ${String(a.value)}`).join(", ")
+            : "";
+        let payloadStr = "";
+        if (e.payload) {
+          try {
+            payloadStr = new TextDecoder().decode(e.payload);
+          } catch {
+            payloadStr = String(e.payload);
+          }
+        }
+        return `<tr>
+          <td>${hex}</td>
+          <td>${attrs}</td>
+          <td>${payloadStr}</td>
+          <td>${e.lastModifiedAtBlock}</td>
+        </tr>`;
+      })
+      .join("");
+
+    div.innerHTML = `<table class="entity-table">
+      <thead><tr><th>Hex</th><th>Attributes</th><th>Payload</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+}
+
+async function oldEntities(blockAfterPush: bigint) {
+  const clients = getClients();
+  const currentBlock = await clients.publicClient.getBlockNumber();
+  const queryBuilder = clients.publicClient.buildQuery();
+  queryBuilder.where(eq("unique", uniqueStr)).withMetadata(true).withPayload(true).withAttributes(true);
+
+  queryBuilder.validAtBlock(blockAfterPush)
+  const res = await queryBuilder.fetch();
+
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  console.log("Get number of entities:", res.entities.length);
+
+
+  infoRightPanel.innerHTML = `<p>Data from ${blockAfterPush} (${currentBlock - blockAfterPush} before) get ${res.entities.length} entities</p>`;
+
+  drawEntities(res.entities, false);
+}
+
+async function newEntities() {
+  const clients = getClients();
+  const currentBlock = await clients.publicClient.getBlockNumber();
+  const queryBuilder = clients.publicClient.buildQuery();
+  queryBuilder.where(eq("unique", uniqueStr)).withMetadata(true).withPayload(true).withAttributes(true);
+
+  queryBuilder.validAtBlock(currentBlock);
+  const res = await queryBuilder.fetch();
+
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  console.log("Get number of entities:", res.entities.length);
+
+
+  infoLeftPanel.innerHTML = `<p>Current list of ${res.entities.length} entities (for block ${currentBlock})</p>`;
+
+  drawEntities(res.entities, true);
+}
+
 
 async function pushEntities() {
   const clients = getClients();
@@ -65,10 +140,13 @@ async function pushEntities() {
     globalEntities.push(entityHex);
   }
 
-  const queryBuilder = clients.publicClient.buildQuery();
+  const blockAfterPush = await clients.publicClient.getBlockNumber();
+  console.log("Block after push:", blockAfterPush);
+
+  let queryBuilder = clients.publicClient.buildQuery();
   queryBuilder.where(eq("unique", uniqueStr)).withMetadata(true).withPayload(true).withAttributes(true);
 
-  queryBuilder.limit(1);
+  queryBuilder.limit(2);
 
   infoLeftPanel.innerHTML = `<p>Fetching created entities page 0</p>`;
 
@@ -88,9 +166,23 @@ async function pushEntities() {
     allEntities.push(...(cursor.entities ?? []));
 
     try {
-      await clients.walletClient.deleteEntity({
-        "entityKey": entitiesMut.createdEntities[5]
-      });
+      if (pageNo === 1) {
+
+        await clients.walletClient.deleteEntity({
+          "entityKey": entitiesMut.createdEntities[5]
+        });
+        await clients.walletClient.updateEntity({
+          entityKey: entitiesMut.createdEntities[6],
+          payload: new TextEncoder().encode(`Updated Entity no: 6`),
+          attributes: [
+            { key: "no", value: 6 },
+            { key: "unique", value: uniqueStr },
+            { key: "updated", value: 1 },
+          ],
+          contentType: "text/plain",
+          expiresIn: 60 * 60 * 24 * 7, // 7 days
+        })
+      }
     } catch (err) {
       console.error("Failed to delete entity:", err);
     }
@@ -99,41 +191,18 @@ async function pushEntities() {
   console.log("Queried Entities:", cursor.entities);
 
   const entities = allEntities ?? [];
-  if (entities.length === 0) {
-    entityListDiv.textContent = "No entities found.";
-  } else {
-    const rows = entities
-      .map((e: Entity) => {
-        const hex = (e.key).toString().slice(0, 6) + "...";
-        const attrs =
-          Array.isArray(e.attributes) && e.attributes.length
-            ? e.attributes.map((a: any) => `${a.key}: ${String(a.value)}`).join(", ")
-            : "";
-        let payloadStr = "";
-        if (e.payload) {
-          try {
-            payloadStr = new TextDecoder().decode(e.payload);
-          } catch {
-            payloadStr = String(e.payload);
-          }
-        }
-        return `<tr>
-          <td>${hex}</td>
-          <td>${attrs}</td>
-          <td>${payloadStr}</td>
-        </tr>`;
-      })
-      .join("");
 
-    entityListDiv.innerHTML = `<table class="entity-table">
-      <thead><tr><th>Hex</th><th>Attributes</th><th>Payload</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-  }
-
+  drawEntities(entities, true);
 
 
   infoLeftPanel.innerHTML = `<p>Finished</p>`;
+
+  while (true) {
+    await oldEntities(blockAfterPush);
+    await newEntities();
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  }
+
 
 
 }
@@ -150,7 +219,11 @@ async function init() {
 
   app.setAttribute("style", "display: block;");
 
-  pushEntities()
+  if (ethBalance < 0.00001) {
+    infoLeftPanel.innerHTML = `<p style="color: red;">Warning: Low balance. Please fund your wallet to proceed.</p>`;
+  } else {
+    pushEntities()
+  }
 }
 
 init()
